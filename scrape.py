@@ -13,53 +13,61 @@ if response.status_code == 200:
     print("\nExtracting product data:\n")
     product_list = []
 
-    for product in products:
+    for product in products[:5]:
         name_tag = product.find('div', class_='product__item__title')
         name = name_tag.get_text(strip=True) if name_tag else "No name"
 
         price_tag = product.find('div', class_='product__item__price-current')
         price_text = price_tag.get_text(strip=True) if price_tag else "Price not found"
 
+        try:
+            price_mdl = int(price_text.replace(',', '').replace(' ', '').replace('lei', ''))
+        except ValueError:
+            price_mdl = 0
+
         link_tag = product.find('a', href=True)
         product_link = 'https://maximum.md' + link_tag['href'] if link_tag else "Link not found"
 
-        print(f"Product Name: {name}")
-        print(f"Price: {price_text} MDL")
-        print(f"Product Link: {product_link}")
+        if name and price_mdl and product_link and 100 <= price_mdl <= 100000:
+            print(f"Product Name: {name}")
+            print(f"Price: {price_mdl} MDL")
+            print(f"Product Link: {product_link}")
 
-        product_response = requests.get(product_link)
-        if product_response.status_code == 200:
-            product_soup = BeautifulSoup(product_response.text, 'html.parser')
+            product_response = requests.get(product_link)
+            if product_response.status_code == 200:
+                product_soup = BeautifulSoup(product_response.text, 'html.parser')
 
-            # Find the feature list
-            feature_list = product_soup.find('ul', class_='feature-list')
-            features = {}
-            if feature_list:
-                # Iterate through each list item to extract details
-                for item in feature_list.find_all('li', class_='feature-list-item'):
-                    key_tag = item.find('span', class_='feature-list-item_left')
-                    value_tag = item.find('span', class_='feature-list-item_right')
+                feature_list = product_soup.find('ul', class_='feature-list')
+                features = {}
+                if feature_list:
+                    for item in feature_list.find_all('li', class_='feature-list-item'):
+                        key_tag = item.find('span', class_='feature-list-item_left')
+                        value_tag = item.find('span', class_='feature-list-item_right')
 
-                    if key_tag and value_tag:
-                        key = key_tag.get_text(strip=True)
-                        value = value_tag.get_text(strip=True)
-                        features[key] = value
+                        if key_tag and value_tag:
+                            key = key_tag.get_text(strip=True)
+                            value = value_tag.get_text(strip=True)
+                            features[key] = value
 
-                # Print out the extracted features for better readability
-                print("\nExtracted Features:")
-                for key, value in features.items():
-                    print(f"{key}: {value}")
+                    print("\nExtracted Features:")
+                    for key, value in features.items():
+                        print(f"{key}: {value}")
+                else:
+                    print("Feature list not found on the product page.")
+
+                product_list.append({
+                    'name': name,
+                    'price': price_mdl,
+                    'link': product_link,
+                    'features': features
+                })
             else:
-                print("Feature list not found on the product page.")
+                print(f"Failed to retrieve details from {product_link}")
 
-            # Store validated data
-            product_list.append({
-                'name': name,
-                'price': price_tag,
-                'link': product_link,
-                'features': features
-            })
         else:
-            print(f"Failed to retrieve details from {product_link}")
+            print(f"Skipped product: {name}, Price: {price_mdl}, Link: {product_link}")
 
-        print(f"\n=============\n")
+        print(f"\n===============\n")
+
+else:
+    print(f"Failed to retrieve the listing page. Status Code: {response.status_code}")
