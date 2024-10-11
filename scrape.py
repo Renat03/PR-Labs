@@ -20,6 +20,11 @@ if response.status_code == 200:
         price_tag = product.find('div', class_='product__item__price-current')
         price_text = price_tag.get_text(strip=True) if price_tag else "Price not found"
 
+        link_tag = product.find('a', href=True)
+        product_link = 'https://maximum.md' + link_tag['href'] if link_tag else "Link not found"
+
+
         print(f"Product Name: {name}")
         print(f"Price: {price_text} MDL")
+        print(f"Product Link: {product_link}")
         print(f"\n=============\n")
