@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from functools import reduce
+from datetime import datetime, timezone
 
 
 url = 'https://maximum.md/ro/telefoane-si-gadgeturi/telefoane-si-comunicatii/smartphoneuri/'
@@ -8,11 +9,10 @@ url = 'https://maximum.md/ro/telefoane-si-gadgeturi/telefoane-si-comunicatii/sma
 
 response = requests.get(url)
 
-if response.status_code == 200:
-    soup = BeautifulSoup(response.text, 'html.parser')
+def scrape_func(text):
+    soup = BeautifulSoup(text, 'html.parser')
     products = soup.find_all('div', class_='js-content product__item')
 
-    #print("\nExtracting product data:\n")
     product_list = []
 
     for product in products[:5]:
@@ -50,11 +50,14 @@ if response.status_code == 200:
             else:
                 print("Feature list not found on the product page.")
 
+            timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')
+
             product_list.append({
                 'name': name,
                 'price': price_mdl,
                 'link': product_link,
-                'features': features
+                'features': features,
+                'timestamp': timestamp
             })
 
             filtered_products = list(filter(lambda x: 10000 <= x['price'] <= 20000, product_list))
@@ -69,14 +72,19 @@ if response.status_code == 200:
         else:
             print(f"Failed to retrieve details from {product_link}")
 
-else:
-    print(f"Failed to retrieve the listing page. Status Code: {response.status_code}")
+    print("\nFiltered Products:")
+    for product in products_in_eur:
+        print(
+            f"Name: {product['name']}\nPrice: {product['price']} MDL\nPrice in EUR: {product['price_eur']}\nTimestamp: {product['timestamp']}")
+        for key, value in product['features'].items():
+            print(f"{key}: {value}")
+        print("\n=====================\n")
 
-print("\nFiltered Products:")
-for product in products_in_eur:
-    print(f"Name: {product['name']}\nPrice: {product['price']} MDL\nPrice in EUR: {product['price_eur']}")
-    for key, value in product['features'].items():
-        print(f"{key}: {value}")
-    print("\n=====================\n")
+    print(f"\nTotal Price of Filtered Products in EUR: {total_price_eur}")
 
-print(f"\nTotal Price of Filtered Products in EUR: {total_price_eur}")
+
+if __name__ == "__main__":
+    if response.status_code == 200:
+        scrape_func(response.text)
+    else:
+        print(f"Failed to retrieve the listing page. Status Code: {response.status_code}")
