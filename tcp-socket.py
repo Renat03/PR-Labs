@@ -64,3 +64,4 @@ if status_code == 301:
         response_body = new_response_str.split("\r\n\r\n", 1)[1]
 
         scrape_func(response_body)
+

@@ -82,9 +82,45 @@ def scrape_func(text):
 
     print(f"\nTotal Price of Filtered Products in EUR: {total_price_eur}")
 
+    return products_in_eur
+
+def serialize_to_json(filtered_products):
+    json_str = "[\n"
+    for product in filtered_products:
+        json_str += "  {\n"
+        json_str += f'    "Name": "{product["name"]}",\n'
+        json_str += f'    "Price": {product["price"]},\n'
+        json_str += f'    "Price in EUR": {product["price_eur"]:.2f}\n'
+        json_str += "  },\n"
+
+    json_str = json_str.rstrip(",\n")
+    json_str += "\n]"
+    return json_str
+
+
+def serialize_to_xml(filtered_products):
+    xml_str = "<products>\n"
+    for product in filtered_products:
+        xml_str += "  <product>\n"
+        xml_str += f'    <Name>{product["name"]}</Name>\n'
+        xml_str += f'    <Price>{product["price"]}</Price>\n'
+        xml_str += f'    <Price_in_EUR>{product["price_eur"]:.2f}</Price_in_EUR>\n'
+        xml_str += "  </product>\n"
+
+    xml_str += "</products>"
+    return xml_str
+
 
 if __name__ == "__main__":
     if response.status_code == 200:
-        scrape_func(response.text)
+        filtered_products = scrape_func(response.text)
+        
+        # json_output = serialize_to_json(filtered_products)
+        # print("JSON Output:")
+        # print(json_output)
+        #
+        # xml_output = serialize_to_xml(filtered_products)
+        # print("\nXML Output:")
+        # print(xml_output)
     else:
         print(f"Failed to retrieve the listing page. Status Code: {response.status_code}")
