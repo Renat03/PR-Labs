@@ -115,9 +115,9 @@ if __name__ == "__main__":
     if response.status_code == 200:
         filtered_products = scrape_func(response.text)
         
-        # json_output = serialize_to_json(filtered_products)
-        # print("JSON Output:")
-        # print(json_output)
+        json_output = serialize_to_json(filtered_products)
+        print("JSON Output:")
+        print(json_output)
         #
         # xml_output = serialize_to_xml(filtered_products)
         # print("\nXML Output:")
