@@ -69,8 +69,8 @@ async def send_to_room(room_name, message):
 async def start_websocket_server():
     print("Attempting to start WebSocket server...")
     try:
-        async with websockets.serve(handle_chat, "127.0.0.1", 8888):
-            print("WebSocket server successfully running on ws://127.0.0.1:8888")
+        async with websockets.serve(handle_chat, "0.0.0.0", 8888):
+            print("WebSocket server successfully running on ws://0.0.0.0:8888")
             await asyncio.Future()  # Run forever
     except Exception as e:
         print(f"Failed to start WebSocket server: {e}")

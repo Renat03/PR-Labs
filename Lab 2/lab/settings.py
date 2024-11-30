@@ -88,8 +88,12 @@ CHANNEL_LAYERS = {
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('POSTGRES_DB', 'pr'),
+        'USER': os.getenv('POSTGRES_USER', 'pr'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'lab'),
+        'HOST': 'db',  # Docker Compose service name (db) is used as the host
+        'PORT': '5432',
     }
 }
 
