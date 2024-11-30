@@ -2,6 +2,9 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+import threading
+import asyncio
+from chat_server import start_websocket_server
 
 
 def main():
@@ -19,4 +22,6 @@ def main():
 
 
 if __name__ == '__main__':
+    websocket_thread = threading.Thread(target=lambda: asyncio.run(start_websocket_server()))
+    websocket_thread.start()
     main()

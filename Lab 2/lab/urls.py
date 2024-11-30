@@ -33,5 +33,5 @@ urlpatterns = [
     path('get-product', views.GetProductView.as_view()),
     path('update-product', views.UpdateProductView.as_view()),
     path('upload-file/', views.FileUploadView.as_view(), name='upload-file'),
-    path('chat/', include('chat.urls')),
+    path('', views.index, name='index'),
 ]  + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,112 +1,76 @@
+import json
 import asyncio
-import websockets
 import threading
-from http.server import SimpleHTTPRequestHandler, HTTPServer
+import websockets
 
-# In-memory data structure to store chat room users
-chat_rooms = {"default_room": set()}  # Example chat room
 
-async def chat_handler(websocket):
-    """
-    Handle WebSocket connections for the chat room.
-    """
-    # Default room and client initialization
-    room_name = "default_room"
-    chat_rooms[room_name].add(websocket)
+chat_rooms = {"general": set()}
+
+async def handle_chat(websocket):
+    current_chat_room = None
+    user_name = None
 
     try:
-        # Notify the user joined
-        await broadcast_message(room_name, f"A user joined the chat room.")
+        async for raw_message in websocket:
+            try:
+                message_data = json.loads(raw_message)
+            except json.JSONDecodeError:
+                error_response = {"error": "Invalid JSON format"}
+                await websocket.send(json.dumps(error_response))
+                continue
 
-        async for message in websocket:
-            # Parse the received message
-            if message.startswith("join_room:"):
-                _, room_name = message.split(":", 1)
-                room_name = room_name.strip()
+            command = message_data.get("command")
+            provided_user_name = message_data.get("username")
 
-                # Join the new room
-                await join_room(websocket, room_name)
+            if command == "join_room" and user_name is None:
+                user_name = provided_user_name
+                room_name = message_data.get("room", "general")
+                current_chat_room = room_name
 
-            elif message.startswith("send_msg:"):
-                msg_content = message.split(":", 1)[1].strip()
-                await broadcast_message(room_name, msg_content)
+                if room_name not in chat_rooms:
+                    chat_rooms[room_name] = set()
+                chat_rooms[room_name].add(websocket)
 
-            elif message == "leave_room":
-                await leave_room(websocket, room_name)
-                break
+                join_notification = f"{user_name} joined {room_name}"
+                await send_to_room(room_name, json.dumps({"message": join_notification}))
+
+            elif command == "send_msg" and user_name == provided_user_name:
+                if current_chat_room:
+                    user_message = message_data.get("message")
+                    if user_message:
+                        formatted_message = json.dumps({"username": user_name, "message": user_message})
+                        await send_to_room(current_chat_room, formatted_message)
+
+            elif command == "leave_room" and user_name == provided_user_name:
+                if current_chat_room:
+                    chat_rooms[current_chat_room].discard(websocket)
+                    leave_notification = f"{user_name} left {current_chat_room}"
+                    await send_to_room(current_chat_room, json.dumps({"message": leave_notification}))
+                    current_chat_room = None
+
+            else:
+                error_response = {"error": "Unauthorized action or invalid command"}
+                await websocket.send(json.dumps(error_response))
 
     except websockets.ConnectionClosed:
-        print("A user disconnected.")
-    finally:
-        # Cleanup on disconnect
-        await leave_room(websocket, room_name)
+        if current_chat_room:
+            chat_rooms[current_chat_room].discard(websocket)
 
 
-async def join_room(websocket, room_name):
-    """
-    Join a new chat room.
-    """
-    for room in chat_rooms.values():
-        room.discard(websocket)  # Leave any previous room
-    if room_name not in chat_rooms:
-        chat_rooms[room_name] = set()  # Create room if not exists
-    chat_rooms[room_name].add(websocket)
-    await broadcast_message(room_name, "A user joined the room.")
+async def send_to_room(room_name, message):
+    connected_clients = chat_rooms.get(room_name, set())
+    for client in connected_clients:
+        try:
+            await client.send(message)
+        except websockets.ConnectionClosed:
+            connected_clients.discard(client)
 
-async def leave_room(websocket, room_name):
-    """
-    Leave the current chat room.
-    """
-    if room_name in chat_rooms:
-        chat_rooms[room_name].discard(websocket)
-        if len(chat_rooms[room_name]) == 0:
-            del chat_rooms[room_name]
-        else:
-            await broadcast_message(room_name, "A user left the room.")
 
-async def broadcast_message(room_name, message):
-    """
-    Send a message to all users in a specific chat room.
-    """
-    if room_name in chat_rooms:
-        websockets_list = list(chat_rooms[room_name])
-        if websockets_list:
-            await asyncio.gather(*[ws.send(message) for ws in websockets_list])
-
-# HTTP Server (Static Files)
-class StaticServerHandler(SimpleHTTPRequestHandler):
-    """
-    HTTP server for serving a simple UI or API endpoint.
-    """
-    def do_GET(self):
-        if self.path == "/":
-            self.path = "/index.html"  # Serve a default HTML page
-        return super().do_GET()
-
-def run_http_server():
-    """
-    Start the HTTP server in a separate thread.
-    """
-    httpd = HTTPServer(("127.0.0.1", 8080), StaticServerHandler)
-    print("HTTP server running at http://127.0.0.1:8080")
-    httpd.serve_forever()
-
-# WebSocket Server
-async def run_websocket_server():
-    """
-    Start the WebSocket server on port 8000.
-    """
-    async with websockets.serve(chat_handler, "127.0.0.1", 8000):
-        print("WebSocket server running at ws://127.0.0.1:8000")
-        await asyncio.Future()  # Keep the server running
-
-# Run both servers in separate threads
-def main():
-    http_thread = threading.Thread(target=run_http_server, daemon=True)
-    http_thread.start()
-
-    # Run WebSocket server on the main thread
-    asyncio.run(run_websocket_server())
-
-if __name__ == "__main__":
-    main()
+async def start_websocket_server():
+    print("Attempting to start WebSocket server...")
+    try:
+        async with websockets.serve(handle_chat, "127.0.0.1", 8888):
+            print("WebSocket server successfully running on ws://127.0.0.1:8888")
+            await asyncio.Future()  # Run forever
+    except Exception as e:
+        print(f"Failed to start WebSocket server: {e}")

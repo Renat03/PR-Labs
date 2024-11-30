@@ -62,3 +62,9 @@ class FileUploadView(views.APIView):
             return Response({'message': 'File uploaded successfully!'}, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+from django.http import JsonResponse
+
+def index(request):
+    return JsonResponse({"message": "Welcome to the chat server!"})
